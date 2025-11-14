@@ -21,7 +21,7 @@ Module modINI
 
         Dim RetVal As String, Worked As Long
 
-        RetVal = Space(255)  ''vb6.0은 String으로 담아와도 되던데 여기에선 오류나서 변경함 
+        RetVal = Space(4096)  ''vb6.0은 String으로 담아와도 되던데 여기에선 오류나서 변경함 
 
         Worked = GetPrivateProfileString(Section, Key, "", RetVal, Len(RetVal), FileNm)
 

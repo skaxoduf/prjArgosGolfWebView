@@ -6,8 +6,8 @@
     <StartupObject>Sub Main</StartupObject>
     <UseWindowsForms>true</UseWindowsForms>
     <MyType>WindowsForms</MyType>
-    <AssemblyName>ArgosGolfWebView</AssemblyName>
-    <ApplicationIcon>Argos_Title.ico</ApplicationIcon>
+    <AssemblyName>ArgosAPTDemonServer</AssemblyName>
+    <ApplicationIcon>bin\Release\net8.0-windows\icon\Argos\Argos_Title_Real.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Argos_Title.ico" />
+    <Content Include="bin\Release\net8.0-windows\icon\Argos\Argos_Title_Real.ico" />
   </ItemGroup>
 
   <ItemGroup>

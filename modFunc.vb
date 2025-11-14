@@ -28,5 +28,29 @@
         End Try
 
     End Sub
+    Public Function AuthenticateWithPassword() As Boolean
+        ' --- 1. 비밀번호 생성 ---
+        Dim currentDay As Integer = Date.Today.Day
+        Dim sumOfDigits As Integer = 0
+        For Each c As Char In currentDay.ToString()
+            sumOfDigits += CInt(c.ToString())
+        Next
+        Dim calculatedNumber As Integer = sumOfDigits * 7
+        Dim correctPassword As String = $"dy{calculatedNumber}0655"
+
+        ' --- 2. 사용자 입력 받기 ---
+        Dim userInput As String = InputBox("비밀번호를 입력하세요.", "인증")
+
+        ' --- 3. 비밀번호 확인 ---
+        If userInput = correctPassword Then
+            Return True ' 인증 성공
+        Else
+            If Not String.IsNullOrEmpty(userInput) Then
+                MessageBox.Show("비밀번호가 올바르지 않습니다.", "인증 실패", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            End If
+            Return False ' 인증 실패
+        End If
+    End Function
+
 
 End Module
