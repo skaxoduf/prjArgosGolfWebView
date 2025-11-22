@@ -10,8 +10,8 @@ Public Class Form1
     Private WithEvents trayIcon As New NotifyIcon()
     Private WithEvents trayMenu As New ContextMenuStrip()
     Private mainTimer As Timer
-
-
+    Private iniLastWriteTime As DateTime = DateTime.MinValue
+    Private isDailyRefreshDone As Boolean = False
     Private WithEvents tmrLog1 As New System.Windows.Forms.Timer()
     Private WithEvents tmrLog2 As New System.Windows.Forms.Timer()
     Private rnd As New Random()
@@ -50,7 +50,7 @@ Public Class Form1
     Private Const GONGDONG_CALL_HOUR As Integer = 1 ' 오전 1시
     Private Const GONGDONG_CALL_MINUTE As Integer = 0 ' 0분
     Private Const GONGDONG_CALL_SECOND As Integer = 0 ' 0초
-    Private GONGDONG_CALL_URL As String
+    Private GongDongCallUrl As String
     Private lastCallDate_GongDong As DateTime = DateTime.MinValue ' 공동 과금 호출 일자를 기록
 
     Private Async Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
@@ -62,6 +62,10 @@ Public Class Form1
         If Config_Load() = False Then
             Me.Close()
             Return
+        End If
+
+        If System.IO.File.Exists(gAppPath) Then
+            iniLastWriteTime = System.IO.File.GetLastWriteTime(gAppPath)
         End If
 
         If WebView21 IsNot Nothing Then
@@ -159,40 +163,51 @@ Public Class Form1
 
         End If
     End Sub
-    Private Function Config_Load() As Boolean
+    Private Function Config_Load(Optional isSilent As Boolean = False) As Boolean
         Try
             gAppPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Application.ExecutablePath), INI_FILENAME)
+
+            ' INI 값 읽기
             gTime = GetIni("Settings", "Time", gAppPath)
-            gGongDongLastCallDate = GetIni("Settings", "LastGongDongCallDate", gAppPath)  ' 마지막 공동과금 처리일자 
+            gGongDongLastCallDate = GetIni("Settings", "LastGongDongCallDate", gAppPath)
             gUrl = GetIni("Settings", "Url", gAppPath)
 
+            ' URL 설정
             If gUrl <> "" Then
-                GONGDONG_CALL_URL = $"{gUrl}api/GongDongGwaGeum/GwaGeumAuto/GwaGeumAuto.asp"
+                GongDongCallUrl = $"{gUrl}api/GongDongGwaGeum/GwaGeumAuto/GwaGeumAuto.asp"
             Else
-                GONGDONG_CALL_URL = ""
+                GongDongCallUrl = ""
             End If
 
-            If DateTime.TryParse(gGongDongLastCallDate, lastCallDate_GongDong) Then ' 문자열을 DateTime으로 파싱하여 lastCallDate_GongDong에 할당
+            ' 마지막 호출 날짜 로드
+            If DateTime.TryParse(gGongDongLastCallDate, lastCallDate_GongDong) Then
                 WriteLog($"[Config] 마지막 공동 과금 호출 일자 로드됨: {lastCallDate_GongDong.ToShortDateString()}", "Log", "GongDongLog")
-                WriteLogDisp(txtGolfWebView, "[Config] 마지막 공동 과금 호출 일자 로드됨: {lastCallDate_GongDong.ToShortDateString()}", True, "GolfWebView.log")
+                WriteLogDisp(txtGolfWebView, $"[Config] 마지막 공동 과금 호출 일자 로드됨: {lastCallDate_GongDong.ToShortDateString()}", True, "GolfWebView.log")
             Else
                 lastCallDate_GongDong = DateTime.MinValue
             End If
 
+            ' 시간 설정 확인 
             If String.IsNullOrWhiteSpace(gTime) Then
-                MessageBox.Show("시간 설정이 잘못되었습니다.", "에러", MessageBoxButtons.OK, MessageBoxIcon.Error)
-                WriteLogDisp(txtGolfWebView, "시간 설정이 잘못되었습니다.", True, "GolfWebView.log")
+                MessageBox.Show("시간 설정이 비어있습니다.", "에러", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                WriteLogDisp(txtGolfWebView, "시간 설정이 비어있습니다.", True, "GolfWebView.log")
                 Return False
             End If
 
             Dim timeParts() As String = gTime.Split(":")
-            If timeParts.Length = 3 AndAlso Integer.TryParse(timeParts(0), targetHour) AndAlso Integer.TryParse(timeParts(1), targetMinute) AndAlso Integer.TryParse(timeParts(2), targetSecond) Then
+
+            ' 파싱 시도 및 전역 변수 할당
+            If timeParts.Length = 3 AndAlso
+                Integer.TryParse(timeParts(0), targetHour) AndAlso
+                Integer.TryParse(timeParts(1), targetMinute) AndAlso
+                Integer.TryParse(timeParts(2), targetSecond) Then
                 Return True
             Else
                 MessageBox.Show("시간 값의 형식이 잘못되었습니다. 'HH:mm:ss' 형식으로 입력해주세요. ex) 09:00:01", "에러", MessageBoxButtons.OK, MessageBoxIcon.Error)
                 WriteLogDisp(txtGolfWebView, "시간 값의 형식이 잘못되었습니다. 'HH:mm:ss' 형식으로 입력해주세요. ex) 09:00:01", True, "GolfWebView.log")
                 Return False
             End If
+
         Catch ex As Exception
             MessageBox.Show("설정 파일을 읽는 중 오류가 발생했습니다: " & ex.Message, "에러", MessageBoxButtons.OK, MessageBoxIcon.Error)
             WriteLogDisp(txtGolfWebView, "설정 파일을 읽는 중 오류가 발생했습니다: " & ex.Message, True, "GolfWebView.log")
@@ -202,57 +217,73 @@ Public Class Form1
 
     ' 스케줄된 작업을 처리하는 타이머 콜백 메서드
     Private Async Sub CheckAllScheduledTasks(state As Object)
-        Dim now As DateTime = DateTime.Now
-        Dim jsCode As String
+        Dim nowTime As DateTime = DateTime.Now
 
-        ' ini에서 변경시 프로그램 재실행 안하고도 바로 적용되게끔 
-        gTime = GetIni("Settings", "Time", gAppPath)
-        Dim timeParts() As String = gTime.Split(":")
-        Integer.TryParse(timeParts(0), targetHour)
-        Integer.TryParse(timeParts(1), targetMinute)
-        Integer.TryParse(timeParts(2), targetSecond)
+        ' 설정파일 변경 감지하는 부분
+        Try
+            Dim currentLastWrite As DateTime = System.IO.File.GetLastWriteTime(gAppPath)
+            ' 파일이 수정되었다면
+            If currentLastWrite > iniLastWriteTime Then
+                iniLastWriteTime = currentLastWrite
+                WriteLog("설정 파일 변경 감지됨. 재로드 시도...", "Log", "SystemLog")
+                Me.Invoke(Sub()
+                              Config_Load(True)
+                          End Sub)
+            End If
+        Catch ex As Exception
+        End Try
 
 
-        ' 1. Golf WebView 새로고침
-        If now.Hour = targetHour AndAlso now.Minute = targetMinute AndAlso now.Second = targetSecond Then
+        ' Golf WebView 새로고침 
+        If nowTime.Hour = targetHour AndAlso nowTime.Minute = targetMinute AndAlso nowTime.Second = targetSecond Then
+            ' 1초 안에 여러 번 호출되는 것을 방지하기 위해 플래그로 판단
+            If Not isDailyRefreshDone Then
+                WriteLog("Golf WebView 새로고침 시간 호출 조건 충족", "Log", "TaseokLog")
 
-            WriteLog("Golf WebView 새로고침 시간 호출 조건 충족", "Log", "TaseokLog")
+                Me.Invoke(Async Sub()
+                              If WebView21 IsNot Nothing AndAlso WebView21.CoreWebView2 IsNot Nothing Then
+                                  WebView21.Source = New Uri($"{gUrl}api/GolfTaseokRealTime")
+                                  Dim jsCode As String = $"$.fnDefaultSetting();"
+                                  Await WebView21.ExecuteScriptAsync(jsCode)
+                                  WriteLog("Golf WebView 웹페이지 호출 명령 실행!!", "Log", "TaseokLog")
+                              Else
+                                  WriteLog("Golf WebView WebView2 인스턴스가 유효하지 않아 호출 불가.", "Error", "TaseokLog")
+                              End If
+                          End Sub)
 
-            Me.Invoke(Async Sub()
-                          If WebView21 IsNot Nothing AndAlso WebView21.CoreWebView2 IsNot Nothing Then
-                              WebView21.Source = New Uri($"{gUrl}api/GolfTaseokRealTime")
-                              jsCode = $"$.fnDefaultSetting();"
-                              Await WebView21.ExecuteScriptAsync(jsCode)
-                              WriteLog("Golf WebView 웹페이지 호출 명령 실행!!", "Log", "TaseokLog")
-                          Else
-                              WriteLog("Golf WebView WebView2 인스턴스가 유효하지 않아 호출 불가.", "Error", "TaseokLog")
-                          End If
-                      End Sub)
+                isDailyRefreshDone = True
+            End If
+        Else
+            isDailyRefreshDone = False
         End If
 
-        ' 2. 매월 1일 공동 과금 호출 기능 (새로운 로직)
-        ' 현재 날짜가 1일이고, 목표 시간(오전 1시)이 되었으며,
-        ' 마지막 호출 일자가 현재 월의 1일이 아니라면 (이번 달에 아직 호출 안 했다면)
-        If now.Day = 1 AndAlso
-           now.Hour >= GONGDONG_CALL_HOUR AndAlso
-           (now.Hour > GONGDONG_CALL_HOUR OrElse now.Minute >= GONGDONG_CALL_MINUTE) AndAlso
-           (now.Hour > GONGDONG_CALL_HOUR OrElse now.Minute > GONGDONG_CALL_MINUTE OrElse now.Second >= GONGDONG_CALL_SECOND) AndAlso
-           (lastCallDate_GongDong.Year <> now.Year OrElse lastCallDate_GongDong.Month <> now.Month) Then ' 이번 달에 호출했는지 확인
 
-            WriteLog($"공동 과금 호출 시간 조건 충족: {GONGDONG_CALL_URL}", "Log", "GongDongLog")
 
-            ' 비동기 호출을 위해 Invoke 외부에서 Task.Run 사용
+
+        ' 매월 1일 공동 과금 자동연장 API 호출
+        Dim targetGongDongTime As New DateTime(nowTime.Year, nowTime.Month, 1, GONGDONG_CALL_HOUR, GONGDONG_CALL_MINUTE, GONGDONG_CALL_SECOND)
+        If (lastCallDate_GongDong.Year <> nowTime.Year OrElse lastCallDate_GongDong.Month <> nowTime.Month) AndAlso
+            nowTime >= targetGongDongTime Then
+
+            lastCallDate_GongDong = nowTime.Date
+            WriteLog($"[자동과금] 공동 과금 호출 조건 충족 (Catch-up 실행). 목표: {targetGongDongTime}, 현재: {nowTime}", "Log", "GongDongLog")
+
             Await Task.Run(Async Sub()
-                               Await CallGongDongGwaGeumApi()
+                               Try
+                                   Await CallGongDongGwaGeumApi()
+                               Catch ex As Exception
+                                   WriteLog($"공동과금 자동 연장 호출 중 오류: {ex.Message}", "Error", "GongDongLog")
+                               End Try
                            End Sub)
-
         End If
+
+
     End Sub
     ' 공동 과금 API 호출 메서드
     Private Async Function CallGongDongGwaGeumApi() As Task
         Using client As New HttpClient()
             Try
-                Dim response As HttpResponseMessage = Await client.GetAsync(GONGDONG_CALL_URL)
+                Dim response As HttpResponseMessage = Await client.GetAsync(GongDongCallUrl)
                 response.EnsureSuccessStatusCode()
 
                 Dim responseBody As String = Await response.Content.ReadAsStringAsync()
