@@ -266,7 +266,7 @@ Public Class Form1
             nowTime >= targetGongDongTime Then
 
             lastCallDate_GongDong = nowTime.Date
-            WriteLog($"[자동과금] 공동 과금 호출 조건 충족 (Catch-up 실행). 목표: {targetGongDongTime}, 현재: {nowTime}", "Log", "GongDongLog")
+            WriteLog($"[자동과금] 공동 과금 호출 조건 충족 실행). 목표: {targetGongDongTime}, 현재: {nowTime}", "Log", "GongDongLog")
 
             Await Task.Run(Async Sub()
                                Try
