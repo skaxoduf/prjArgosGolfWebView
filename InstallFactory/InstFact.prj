@@ -1,6 +1,6 @@
 [WindowPos]
-XPos=223
-YPos=329
+XPos=984
+YPos=358
 
 [Project]
 ActiveProject=Project7
@@ -387,12 +387,12 @@ UninstallSilentTool=0
 UninstallSilentToolPath=
 UninstallSilentToolArg=
 [Project7]
-Title=ArgosAPT GolfWebView
+Title=ArgosAPT DemonServer
 SourceFolder=D:\NTY\01_마이그레이션\3_src\Dev2\prjArgosGolfWebView\bin\Release\net8.0-windows
-DefInstallFolder=C:\Argos\GolfWebView
+DefInstallFolder=C:\ArgosAPTDemonServer
 ForceInstallFolder=0
 OutputFolder=D:\NTY\01_마이그레이션\3_src\Dev2\prjArgosGolfWebView
-OutputFilename=ArgosAPT GolfWebView Install
+OutputFilename=ArgosAPT DemonServer Install
 Language=0
 VolumeSize=단일 볼륨
 ConfirmOverwriteSourceFolderFile=1
@@ -415,7 +415,7 @@ PostInfo=0
 PostInfoPath=E:\Project\파주곤도라현황판\Setup\초기설치방법.txt
 AllowCancelPostInfo=1
 Shortcut=1
-ProgramGroupName=ArgosAPT
+ProgramGroupName=ArgosAPT DemonServer
 OpenProgramGroupFolder=1
 MiscFile=0
 Registry=0
@@ -432,10 +432,10 @@ AllowCancelRunApp=0
 Uninstall=1
 UninstallType=0
 CPLUninstall=1
-CPLUninstallName=ArgosAPT
+CPLUninstallName=ArgosAPT DemonServer
 ShortcutUninstall=1
-UninstallShortcutName=ArgosAPT
+UninstallShortcutName=ArgosAPT DemonServer
 UninstallSilentTool=0
 UninstallSilentToolPath=
 UninstallSilentToolArg=
-Shortcut1=ArgosGolfWebView,D:\NTY\01_마이그레이션\3_src\Dev2\prjArgosGolfWebView\bin\Release\net8.0-windows\ArgosGolfWebView.exe,{DeskTop},,D:\NTY\01_마이그레이션\3_src\Dev2\prjArgosGolfWebView\bin\Release\net8.0-windows\icon\Argos\Argos_Title.ico,
+Shortcut1=ArgosAPT DemonServer,D:\NTY\01_마이그레이션\3_src\Dev2\prjArgosGolfWebView\bin\Release\net8.0-windows\icon\Argos\Argos_Title_Real.ico,{DeskTop},,D:\NTY\01_마이그레이션\3_src\Dev2\prjArgosGolfWebView\bin\Release\net8.0-windows\icon\Argos\Argos_Title.ico,

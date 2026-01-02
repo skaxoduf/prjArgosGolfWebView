@@ -34,7 +34,7 @@ Public Class Form1
         "트랜잭션 시작.",
         "Commit complete.",
         "교착 상태 감지. 자동 롤백 실행.",
-        "Insex 재구성 작업 완료.",
+        "Index 재구성 작업 완료.",
         "데이터 수신: INFRARED_02 ACTIVATED"
     }
 
@@ -52,6 +52,22 @@ Public Class Form1
     Private Const GONGDONG_CALL_SECOND As Integer = 0 ' 0초
     Private GongDongCallUrl As String
     Private lastCallDate_GongDong As DateTime = DateTime.MinValue ' 공동 과금 호출 일자를 기록
+
+    ' 강좌 자동연장 호출 상수 및 변수 (2026-01-02 15:42:00 코드 작성 시작)
+    Private Const GANGJWA_CALL_HOUR As Integer = 1 ' 오전 1시
+    Private Const GANGJWA_CALL_MINUTE As Integer = 0 ' 0분
+    Private Const GANGJWA_CALL_SECOND As Integer = 0 ' 0초
+    Private GangJwaCallUrl As String
+    Private lastCallDate_GangJwa As DateTime = DateTime.MinValue ' 강좌 자동연장 호출 일자를 기록
+    ' 강좌 자동연장 호출 상수 및 변수 (2026-01-02 15:42:00 코드 작성 종료)
+
+    ' 사물함 자동연장 호출 상수 및 변수 (2026-01-02 18:05:10 코드 작성 시작)
+    Private Const SAMULHAM_CALL_HOUR As Integer = 1 ' 오전 1시
+    Private Const SAMULHAM_CALL_MINUTE As Integer = 0 ' 0분
+    Private Const SAMULHAM_CALL_SECOND As Integer = 0 ' 0초
+    Private SamulhamCallUrl As String
+    Private lastCallDate_Samulham As DateTime = DateTime.MinValue ' 사물함 자동연장 호출 일자를 기록
+    ' 사물함 자동연장 호출 상수 및 변수 (2026-01-02 18:05:10 코드 작성 종료)
 
     Private Async Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
 
@@ -187,6 +203,28 @@ Public Class Form1
                 lastCallDate_GongDong = DateTime.MinValue
             End If
 
+            ' 강좌 자동연장 설정 로드 (2026-01-02 15:42:00 코드 작성 시작)
+            gGangJwaLastCallDate = GetIni("Settings", "LastGangJwaCallDate", gAppPath)
+            GangJwaCallUrl = $"{gUrl}api/CS/AutoExtend/GangjwaAutoExtend.asp"
+
+            If DateTime.TryParse(gGangJwaLastCallDate, lastCallDate_GangJwa) Then
+                WriteLog($"[Config] 마지막 강좌 자동연장 호출 일자 로드됨: {lastCallDate_GangJwa.ToShortDateString()}", "Log", "GangJwaLog")
+            Else
+                lastCallDate_GangJwa = DateTime.MinValue
+            End If
+            ' 강좌 자동연장 설정 로드 (2026-01-02 15:42:00 코드 작성 종료)
+
+            ' 사물함 자동연장 설정 로드 (2026-01-02 18:05:10 코드 작성 시작)
+            gSamulhamLastCallDate = GetIni("Settings", "LastSamulhamCallDate", gAppPath)
+            SamulhamCallUrl = $"{gUrl}api/CS/AutoExtend/SamulhamAutoExtend.asp"
+
+            If DateTime.TryParse(gSamulhamLastCallDate, lastCallDate_Samulham) Then
+                WriteLog($"[Config] 마지막 사물함 자동연장 호출 일자 로드됨: {lastCallDate_Samulham.ToShortDateString()}", "Log", "SamulhamLog")
+            Else
+                lastCallDate_Samulham = DateTime.MinValue
+            End If
+            ' 사물함 자동연장 설정 로드 (2026-01-02 18:05:10 코드 작성 종료)
+
             ' 시간 설정 확인 
             If String.IsNullOrWhiteSpace(gTime) Then
                 MessageBox.Show("시간 설정이 비어있습니다.", "에러", MessageBoxButtons.OK, MessageBoxIcon.Error)
@@ -278,6 +316,44 @@ Public Class Form1
         End If
 
 
+        ' 매월 1일 강좌 자동연장 API 호출 (2026-01-02 15:42:00 코드 작성 시작)
+        Dim targetGangJwaTime As New DateTime(nowTime.Year, nowTime.Month, 1, GANGJWA_CALL_HOUR, GANGJWA_CALL_MINUTE, GANGJWA_CALL_SECOND)
+        If (lastCallDate_GangJwa.Year <> nowTime.Year OrElse lastCallDate_GangJwa.Month <> nowTime.Month) AndAlso
+            nowTime >= targetGangJwaTime Then
+
+            lastCallDate_GangJwa = nowTime.Date
+            WriteLog($"[강좌자동연장] 호출 조건 충족 실행. 목표: {targetGangJwaTime}, 현재: {nowTime}", "Log", "GangJwaLog")
+
+            Await Task.Run(Async Sub()
+                               Try
+                                   Await CallGangJwaAutoExtensionApi()
+                               Catch ex As Exception
+                                   WriteLog($"강좌 자동 연장 호출 중 오류: {ex.Message}", "Error", "GangJwaLog")
+                               End Try
+                           End Sub)
+        End If
+        ' 매월 1일 강좌 자동연장 API 호출 (2026-01-02 15:42:00 코드 작성 종료)
+
+
+        ' 매월 1일 사물함 자동연장 API 호출 (2026-01-02 18:05:10 코드 작성 시작)
+        Dim targetSamulhamTime As New DateTime(nowTime.Year, nowTime.Month, 1, SAMULHAM_CALL_HOUR, SAMULHAM_CALL_MINUTE, SAMULHAM_CALL_SECOND)
+        If (lastCallDate_Samulham.Year <> nowTime.Year OrElse lastCallDate_Samulham.Month <> nowTime.Month) AndAlso
+            nowTime >= targetSamulhamTime Then
+
+            lastCallDate_Samulham = nowTime.Date
+            WriteLog($"[사물함자동연장] 호출 조건 충족 실행. 목표: {targetSamulhamTime}, 현재: {nowTime}", "Log", "SamulhamLog")
+
+            Await Task.Run(Async Sub()
+                               Try
+                                   Await CallSamulhamAutoExtensionApi()
+                               Catch ex As Exception
+                                   WriteLog($"사물함 자동 연장 호출 중 오류: {ex.Message}", "Error", "SamulhamLog")
+                               End Try
+                           End Sub)
+        End If
+        ' 매월 1일 사물함 자동연장 API 호출 (2026-01-02 18:05:10 코드 작성 종료)
+
+
     End Sub
     ' 공동 과금 API 호출 메서드
     Private Async Function CallGongDongGwaGeumApi() As Task
@@ -290,12 +366,9 @@ Public Class Form1
 
                 WriteLog($"[GongDong API] 응답 수신: {responseBody}", "Log", "GongDongLog")
 
-                ' 응답 파싱: rw "{""rowcount"" : """ & ROWCOUNT & """}"
-                ' JSON.NET 라이브러리 (Newtonsoft.Json) 사용
-                ' 먼저 "rw " 부분을 제거
                 Dim cleanedResponse As String = responseBody.Replace("rw ", "").Trim()
 
-                ' 따옴표로 감싸진 JSON 문자열인지 확인 후 파싱
+                ' 파싱작업..
                 If cleanedResponse.StartsWith("{") AndAlso cleanedResponse.EndsWith("}") Then
                     Dim jsonObject As Object = Newtonsoft.Json.JsonConvert.DeserializeObject(cleanedResponse)
                     Dim rowCount As String = If(jsonObject?("rowcount") IsNot Nothing, jsonObject("rowcount").ToString(), "N/A")
@@ -314,6 +387,101 @@ Public Class Form1
             End Try
         End Using
     End Function
+
+    ' 강좌 자동연장 API 호출 메서드 (2026-01-02 15:42:00 코드 작성 시작)
+    Private Async Function CallGangJwaAutoExtensionApi() As Task
+        Using client As New HttpClient()
+            Try
+                ' URL이 유효한지 체크 (Base URL이 없으면 실행 불가)
+                If String.IsNullOrEmpty(gUrl) Then
+                    WriteLog("[GangJwa API] Base URL이 설정되지 않아 호출을 건너뜁니다.", "Error", "GangJwaLog")
+                    Return
+                End If
+
+                Dim queryDate As String = DateTime.Now.ToString("yyyy-MM-dd")
+                Dim finalUrl As String = $"{GangJwaCallUrl}?yyyy_mm_dd={queryDate}"
+
+                WriteLog($"[GangJwa API] 호출 시도: {finalUrl}", "Log", "GangJwaLog")
+
+                Dim response As HttpResponseMessage = Await client.GetAsync(finalUrl)
+                response.EnsureSuccessStatusCode()
+
+                Dim responseBody As String = Await response.Content.ReadAsStringAsync()
+
+                Dim cleanedResponse As String = responseBody.Trim()
+                WriteLog($"[GangJwa API] 응답 수신: {cleanedResponse}", "Log", "GangJwaLog")
+
+                'json 파싱 
+                Try
+                    Dim jsonObject As Object = Newtonsoft.Json.JsonConvert.DeserializeObject(cleanedResponse)
+
+                    Dim intResult As String = If(jsonObject?("intResult") IsNot Nothing, jsonObject("intResult").ToString(), "N/A")
+                    Dim strResult As String = If(jsonObject?("strResult") IsNot Nothing, jsonObject("strResult").ToString(), "N/A")
+
+                    WriteLog($"[GangJwa API] 파싱 결과 - intResult: {intResult}, strResult: {strResult}", "Log", "GangJwaLog")
+                Catch ex As Exception
+                    WriteLog($"[GangJwa API] JSON 파싱 중 오류: {ex.Message}", "Error", "GangJwaLog")
+                End Try
+
+                lastCallDate_GangJwa = DateTime.Now.Date ' 성공적으로 호출했음을 기록
+                PutIni("Settings", "LastGangJwaCallDate", lastCallDate_GangJwa.ToShortDateString(), gAppPath)  ' 호출 일자를 INI 파일에 저장
+
+            Catch ex As HttpRequestException
+                WriteLog($"[GangJwa API] HTTP 요청 오류 발생: {ex.Message} (상태 코드: {ex.StatusCode})", "Error", "GangJwaLog")
+            Catch ex As Exception
+                WriteLog($"[GangJwa API] 호출 중 예상치 못한 오류 발생: {ex.Message}", "Error", "GangJwaLog")
+            End Try
+        End Using
+    End Function
+    ' 강좌 자동연장 API 호출 메서드 (2026-01-02 15:42:00 코드 작성 종료)
+
+    ' 사물함 자동연장 API 호출 메서드 (2026-01-02 18:05:10 코드 작성 시작)
+    Private Async Function CallSamulhamAutoExtensionApi() As Task
+        Using client As New HttpClient()
+            Try
+                ' URL이 유효한지 체크 (Base URL이 없으면 실행 불가)
+                If String.IsNullOrEmpty(gUrl) Then
+                    WriteLog("[Samulham API] Base URL이 설정되지 않아 호출을 건너뜁니다.", "Error", "SamulhamLog")
+                    Return
+                End If
+
+                Dim queryDate As String = DateTime.Now.ToString("yyyy-MM-dd")
+                Dim finalUrl As String = $"{SamulhamCallUrl}?yyyy_mm_dd={queryDate}"
+
+                WriteLog($"[Samulham API] 호출 시도: {finalUrl}", "Log", "SamulhamLog")
+
+                Dim response As HttpResponseMessage = Await client.GetAsync(finalUrl)
+                response.EnsureSuccessStatusCode()
+
+                Dim responseBody As String = Await response.Content.ReadAsStringAsync()
+
+                ' 공백 등 정리
+                Dim cleanedResponse As String = responseBody.Trim()
+                WriteLog($"[Samulham API] 응답 수신: {cleanedResponse}", "Log", "SamulhamLog")
+
+                ' JSON 파싱
+                Try
+                    Dim jsonObject As Object = Newtonsoft.Json.JsonConvert.DeserializeObject(cleanedResponse)
+
+                    Dim intResult As String = If(jsonObject?("intResult") IsNot Nothing, jsonObject("intResult").ToString(), "N/A")
+                    Dim strResult As String = If(jsonObject?("strResult") IsNot Nothing, jsonObject("strResult").ToString(), "N/A")
+
+                    WriteLog($"[Samulham API] 파싱 결과 - intResult: {intResult}, strResult: {strResult}", "Log", "SamulhamLog")
+                Catch ex As Exception
+                    WriteLog($"[Samulham API] JSON 파싱 중 오류: {ex.Message}", "Error", "SamulhamLog")
+                End Try
+
+                lastCallDate_Samulham = DateTime.Now.Date ' 성공적으로 호출했음을 기록
+                PutIni("Settings", "LastSamulhamCallDate", lastCallDate_Samulham.ToShortDateString(), gAppPath)  ' 호출 일자를 INI 파일에 저장
+
+            Catch ex As HttpRequestException
+                WriteLog($"[Samulham API] HTTP 요청 오류 발생: {ex.Message} (상태 코드: {ex.StatusCode})", "Error", "SamulhamLog")
+            Catch ex As Exception
+                WriteLog($"[Samulham API] 호출 중 예상치 못한 오류 발생: {ex.Message}", "Error", "SamulhamLog")
+            End Try
+        End Using
+    End Function
+    ' 사물함 자동연장 API 호출 메서드 (2026-01-02 18:05:10 코드 작성 종료)
 
     ' 폼 크기 변경 시 트레이로 이동
     Private Sub Form1_Resize(sender As Object, e As EventArgs) Handles Me.Resize
